@@ -1,70 +1,81 @@
-import { OpenAIStream, StreamingTextResponse } from 'ai';
 import { Configuration, OpenAIApi } from 'openai-edge';
 import { NextResponse } from 'next/server';
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-
-// Create a new ratelimiter that allows 10 requests per 10 seconds
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '10 s'),
-});
 
 // Create an OpenAI API client (that's edge friendly!)
 const config = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
 const openai = new OpenAIApi(config);
 
 // IMPORTANT! Set the runtime to edge
 export const runtime = 'edge';
 
-export async function POST(req: Request) {
-  try {
-    const { messages, topic, tone, platform } = await req.json();
+// Add OPTIONS handler for CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
 
-    // Get the IP address of the user
-    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
-    
-    // Rate limit the request
-    const { success, limit, reset, remaining } = await ratelimit.limit(ip);
-    
-    if (!success) {
-      return new NextResponse('Too Many Requests', {
-        status: 429,
-        headers: {
-          'X-RateLimit-Limit': limit.toString(),
-          'X-RateLimit-Remaining': remaining.toString(),
-          'X-RateLimit-Reset': reset.toString(),
-        },
-      });
+export async function POST(req: Request) {
+  console.log('API route hit - POST request received');
+  
+  try {
+    const { topic, platform, tone } = await req.json();
+    console.log('Request body:', { topic, platform, tone });
+
+    if (!topic || !platform || !tone) {
+      console.log('Missing required fields');
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
     }
 
-    // Create the system message based on the selected options
-    const systemMessage = {
-      role: 'system',
-      content: `You are a professional content writer. Generate content for ${platform} with a ${tone} tone about ${topic}. 
-      Make the content engaging, informative, and optimized for the selected platform.`,
-    };
-
-    // Create the chat completion
+    console.log('Sending request to OpenAI...');
     const response = await openai.createChatCompletion({
-      model: 'gpt-4',
-      stream: true,
-      messages: [systemMessage, ...messages],
-      temperature: 0.7,
-      max_tokens: 1000,
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional content writer. Generate content for ${platform} with a ${tone} tone about ${topic}. Make the content engaging, informative, and optimized for the selected platform.`
+        }
+      ],
     });
 
-    // Convert the response into a friendly text-stream
-    const stream = OpenAIStream(response);
-    
-    // Return a StreamingTextResponse, which can be consumed by the client
-    return new StreamingTextResponse(stream);
-  } catch (error) {
-    console.error('Error in chat route:', error);
-    return new NextResponse(
-      JSON.stringify({ error: 'Internal Server Error' }),
+    console.log('OpenAI response received');
+    const data = await response.json();
+    console.log('Response data:', data);
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', data);
+      return NextResponse.json(
+        { error: data.error?.message || 'Failed to generate content' },
+        { status: response.status }
+      );
+    }
+
+    const content = data.choices[0]?.message?.content;
+    if (!content) {
+      console.error('No content in response');
+      return NextResponse.json(
+        { error: 'No content generated' },
+        { status: 500 }
+      );
+    }
+
+    console.log('Returning content');
+    return NextResponse.json({ content });
+  } catch (error: any) {
+    console.error('Error in API route:', error);
+    return NextResponse.json(
+      { error: error.message || 'Something went wrong' },
       { status: 500 }
     );
   }

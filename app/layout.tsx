@@ -1,6 +1,7 @@
+import React from 'react';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeProvider } from '../src/components/theme-provider';
 import { Toaster } from 'sonner';
 import './globals.css';
 
