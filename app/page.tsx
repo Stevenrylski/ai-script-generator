@@ -99,7 +99,7 @@ export default function Home() {
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Enter your topic..."
                 required
-                className="h-11 text-base border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+                className="h-11 text-base border-gray-300 bg-white px-3 py-2 text-black placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               />
             </div>
 
@@ -107,8 +107,8 @@ export default function Home() {
               <div className="space-y-2">
                 <Label htmlFor="platform" className="text-base font-medium text-gray-700 dark:text-gray-200">Platform</Label>
                 <Select value={platform} onValueChange={setPlatform} required>
-                  <SelectTrigger className="h-11 text-base border-gray-200 dark:border-gray-700">
-                    <SelectValue placeholder="Select platform" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select platform" className="text-gray-500" />
                   </SelectTrigger>
                   <SelectContent>
                     {platforms.map((p) => (
@@ -123,8 +123,8 @@ export default function Home() {
               <div className="space-y-2">
                 <Label htmlFor="tone" className="text-base font-medium text-gray-700 dark:text-gray-200">Tone</Label>
                 <Select value={tone} onValueChange={setTone} required>
-                  <SelectTrigger className="h-11 text-base border-gray-200 dark:border-gray-700">
-                    <SelectValue placeholder="Select tone" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tone" className="text-gray-500" />
                   </SelectTrigger>
                   <SelectContent>
                     {tones.map((t) => (
